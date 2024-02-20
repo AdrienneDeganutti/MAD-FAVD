@@ -7,7 +7,7 @@ src/evalcap/coco-caption/*
 src/modeling/passt/passt-s-f128-p16-s10-ap.476-swa.pt
 
 # ignore dataset
-datasets/meta
+datasets/metadata
 datasets/meta/*
 datasets/metadata.zip
 datasets/videos
