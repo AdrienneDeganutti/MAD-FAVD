@@ -64,10 +64,6 @@ class VisionLanguageTSVDataset(object):
         #  'caption_linelist': 'train.caption.linelist.tsv',
         #  'img': 'frame_tsv/train_32frames.img.tsv',
         #  'label': 'train.label.tsv'
-        #  'audio': 'train_mp3.hdf'}
-
-        hdf5_file = op.join(self.root, self.cfg.get('audio', None))
-        assert hdf5_file != None
 
         self.att_mode = args.att_mode
 
@@ -75,12 +71,6 @@ class VisionLanguageTSVDataset(object):
             jfile = open(op.join(self.root, 'metadata', self.cfg.get('ner', None)), 'r')
             self.ner = json.load(jfile)
             jfile.close()
-
-        with open(hdf5_file, 'rb') as f:
-            self.hdf5_file = io.BytesIO(f.read())
-        self.sample_rate = 32000
-        self.clip_length = 10 * self.sample_rate
-        self.audio_file = None
 
         self.visual_file = self.cfg.get('img', None)
         self.visual_tsv = self.get_tsv_file(self.visual_file)
@@ -145,57 +135,25 @@ class VisionLanguageTSVDataset(object):
         # Initialize video transforms
         # adapt from https://github.com/hassony2/torch_videovision
 
-        if is_train == True:
-            self.raw_video_crop_list = [
-                Resize(self.img_res),
-                RandomCrop((self.img_res, self.img_res)),
-                ClipToTensor(channel_nb=3),
-                Normalize(mean=[0.485, 0.456, 0.406],
-                          std=[0.229, 0.224, 0.225])
-            ]
-        else:
-            self.raw_video_crop_list = [
-                Resize(self.img_res),
-                CenterCrop((self.img_res, self.img_res)),
-                ClipToTensor(channel_nb=3),
-                Normalize(mean=[0.485, 0.456, 0.406],
-                          std=[0.229, 0.224, 0.225])
-            ]
-        self.raw_video_prcoess = Compose(self.raw_video_crop_list)
+        #if is_train == True:
+        #    self.raw_video_crop_list = [
+        #        Resize(self.img_res),
+        #        RandomCrop((self.img_res, self.img_res)),
+        #        ClipToTensor(channel_nb=3),
+        #        Normalize(mean=[0.485, 0.456, 0.406],
+        #                  std=[0.229, 0.224, 0.225])
+        #    ]
+        #else:
+        #    self.raw_video_crop_list = [
+        #        Resize(self.img_res),
+        #        CenterCrop((self.img_res, self.img_res)),
+        #        ClipToTensor(channel_nb=3),
+         #       Normalize(mean=[0.485, 0.456, 0.406],
+        #                  std=[0.229, 0.224, 0.225])
+        #    ]
+        #self.raw_video_prcoess = Compose(self.raw_video_crop_list)
 
-    def open_hdf5(self):
-        self.audio_file = h5py.File(self.hdf5_file, 'r')
 
-    def decode_mp3(self, mp3_arr):
-        """
-        decodes an array if uint8 representing an mp3 file
-        :rtype: np.array
-        """
-        container = av.open(io.BytesIO(mp3_arr.tobytes()))
-        stream = next(s for s in container.streams if s.type == 'audio')
-        a = []
-        for _, packet in enumerate(container.demux(stream)):
-            for frame in packet.decode():
-                a.append(frame.to_ndarray().reshape(-1))
-        waveform = np.concatenate(a)
-        if waveform.dtype != 'float32':
-            raise RuntimeError('Unexpected wave type')
-        return waveform
-
-    def pydub_augment(self, waveform, gain_augment=7, ir_augment=0):
-        if gain_augment:
-            gain = torch.randint(gain_augment * 2, (1, )).item() - gain_augment
-            amp = 10**(gain / 20)
-            waveform = waveform * amp
-        return waveform
-
-    def pad_or_truncate(self, x, audio_length):
-        """Pad all audio to specific length."""
-        if len(x) <= audio_length:
-            return np.concatenate(
-                (x, np.zeros(audio_length - len(x), dtype=np.float32)), axis=0)
-        else:
-            return x[0:audio_length]
 
     def roll_func(self, x, axis=1, shift=None, shift_range=50):
         x = torch.as_tensor(x)
@@ -204,11 +162,6 @@ class VisionLanguageTSVDataset(object):
             sf = int(np.random.randint(-shift_range, shift_range))
 
         return x.roll(sf, axis)
-
-    def __del__(self):
-        if self.audio_file is not None:
-            self.audio_file.close()
-            self.audio_file = None
 
     def get_composite_source_idx(self):
         if self.is_composite:
@@ -369,7 +322,7 @@ class VisionLanguageTSVDataset(object):
     def get_frames_from_tsv(self, binary_frms):
         # get pre-extracted video frames from tsv files
         frames = []
-        _C, _H, _W = 3, 224, 224
+        #_C, _H, _W = 3, 224, 224
         if self.decoder_num_frames > len(binary_frms):
             print(
                 f"Corrupt videos, requested {self.decoder_num_frames} frames, "
@@ -388,11 +341,11 @@ class VisionLanguageTSVDataset(object):
 
         for i in sampling(0, len(binary_frms) - 1, self.decoder_num_frames):
             try:
-                image = self.get_image(binary_frms[i])
+                image = binary_frms[i]
             except Exception as e:
                 print(f"Corrupt frame at {i}")
                 image = np.zeros((1, _C, _H, _W), dtype=np.int64)
-            _, _C, _H, _W = image.shape
+            #_, _C, _H, _W = image.shape
             frames.append(image)
         return np.vstack(frames)
 
@@ -414,16 +367,16 @@ class VisionLanguageTSVDataset(object):
 
     def get_visual_data(self, idx, start=None, end=None):
         row = self.get_row_from_tsv(self.visual_tsv, idx)
-        # if the input is a video tsv with only video file paths,
+        # if the input is a video tsv with only video file paths, 
         # extract video frames on-the-fly, and return a video-frame tensor
-        if row[0] == row[-1]:
+        if row[0] == row[-1]: 
             return self.decode_and_get_frames(row[-1], start, end), True
         # if the input is a video tsv with frames pre-extracted,
         # return a video-frame tensor
-        elif len(row) >= self.decoder_num_frames + 2:
-            return self.get_frames_from_tsv(row[2:]), True
+        elif len(row) >= self.decoder_num_frames:
+            return self.get_frames_from_tsv(row[1:]), True
         # if the input is a image tsv, return image numpy array
-        else:
+        else: 
             return self.get_image(row[-1]), False
 
     def __len__(self):
@@ -433,38 +386,22 @@ class VisionLanguageTSVDataset(object):
         if self.args.debug_speed:
             idx = idx % self.args.effective_batch_size
 
-        # audio part
-        if self.audio_file is None:
-            self.open_hdf5()
-        audio_name = self.audio_file['audio_name'][idx].decode()
-        wave_form = self.decode_mp3(self.audio_file['mp3'][idx])
-        wave_form = self.pydub_augment(waveform=wave_form)
-        wave_form = self.pad_or_truncate(x=wave_form,
-                                         audio_length=self.clip_length)
-
-        if self.is_train:
-            wave_form = self.roll_func(x=wave_form.reshape(1, -1))
-        else:
-            wave_form = wave_form.reshape(1, -1)
 
         img_idx, cap_idx = self.get_image_cap_index(idx)
 
         img_key = self.image_keys[img_idx]
 
-        # data consistency check
-        assert audio_name == img_key.split(
-            '/')[-1][:-4], f'audio:{audio_name}, video:{img_key}'
 
         caption_sample, tag, start, end = self.get_caption_and_timeinfo_wrapper(
             img_idx, cap_idx)
         # tag = ' ' start = None end = None is_video = True
         # get image or video frames
         # frames: (T, C, H, W),  is_video: binary tag
-        raw_frames, is_video = self.get_visual_data(img_idx, start, end)
+        #raw_frames, is_video = self.get_visual_data(img_idx, start, end)
 
         # apply augmentation. frozen-in-time if the input is an image
         # preproc_frames: (T, C, H, W), C = 3, H = W = self.img_res, channel is RGB
-        preproc_frames = self.apply_augmentations(raw_frames)
+        #preproc_frames = self.apply_augmentations(raw_frames)
 
         # tokenize caption and generate attention maps
         # it will consider only # of visual tokens for building attention maps. # is args.max_img_seq_length
@@ -477,24 +414,21 @@ class VisionLanguageTSVDataset(object):
         if self.is_train and self.args.text_mask_type == "pos_tag":
             if caption_sample is None:
                 caption_sample = dict()
-            caption_sample['bert_pos_tag'] = self.ner[audio_name]
 
         # add_od_labels = False
-        if self.args.add_od_labels == True:
-            example = self.tensorizer.tensorize_example_e2e(
-                caption,
-                preproc_frames,
-                wave_form,
-                text_b=tag,
-                text_meta=caption_sample,
-                mode=self.att_mode)
-        else:
-            example = self.tensorizer.tensorize_example_e2e(
-                caption,
-                preproc_frames,
-                wave_form,
-                text_meta=caption_sample,
-                mode=self.att_mode)
+        #if self.args.add_od_labels == True:
+        #    example = self.tensorizer.tensorize_example_e2e(
+        #        caption,
+         #       preproc_frames,
+        #        text_b=tag,
+        #        text_meta=caption_sample,
+        #        mode=self.att_mode)
+        #else:
+        #    example = self.tensorizer.tensorize_example_e2e(
+        #        caption,
+         #       preproc_frames,
+         #       text_meta=caption_sample,
+         #       mode=self.att_mode)
 
         # preparing outputs
         meta_data = {}

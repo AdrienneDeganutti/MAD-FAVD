@@ -29,18 +29,19 @@ class SimpleRMSNorm(torch.nn.Module):
 
 class VideoTransformer(torch.nn.Module):
 
-    def __init__(self, args, config, swin, transformer_encoder, passt):
+    def __init__(self, args, config, transformer_encoder):
         super(VideoTransformer, self).__init__()
         self.config = config
-        self.use_checkpoint = args.use_checkpoint and not args.freeze_backbone
-        if self.use_checkpoint:
-            self.swin = checkpoint_wrapper(swin, offload_to_cpu=True)
-        else:
-            self.swin = swin
+        #self.use_checkpoint = args.use_checkpoint and not args.freeze_backbone
+        #if self.use_checkpoint:
+        #    self.swin = checkpoint_wrapper(swin, offload_to_cpu=True)
+        #else:
+        #    self.swin = swin
         self.trans_encoder = transformer_encoder
         self.img_feature_dim = int(args.img_feature_dim)
         self.use_grid_feat = args.grid_feat
-        self.latent_feat_size = self.swin.backbone.norm.normalized_shape[0]
+        #self.latent_feat_size = self.swin.backbone.norm.normalized_shape[0]
+        self.latent_feat_size = 1024
         self.fc = torch.nn.Linear(self.latent_feat_size, self.img_feature_dim)
         self.compute_mask_on_the_fly = False  # deprecated
         self.mask_prob = args.mask_prob
@@ -51,8 +52,7 @@ class VideoTransformer(torch.nn.Module):
         self.sparse_mask_soft2hard = getattr(args, 'sparse_mask_soft2hard',
                                              False)
 
-        # passt
-        self.passt = passt
+
         self.norm = SimpleRMSNorm(d=self.img_feature_dim)
 
         if self.learn_mask_enabled == True:
@@ -68,9 +68,6 @@ class VideoTransformer(torch.nn.Module):
         # masked_pos = torch.Size([3, 300])
         # masked_ids = torch.Size([3, 45])
 
-        audios = kwargs['audio_feat']
-        audios = self.norm(self.passt(audios))
-        del kwargs['audio_feat']
 
         images = kwargs['img_feats']
         B, S, C, H, W = images.shape  # batch, segment, chanel, hight, width
@@ -82,9 +79,6 @@ class VideoTransformer(torch.nn.Module):
         vid_feats = vid_feats.view(B, -1, self.latent_feat_size)
         vid_feats = self.fc(vid_feats)
 
-        # concat vid + audio
-        vid_feats = torch.cat((vid_feats, audios),
-                              dim=-2)  # vid_feats = torch.Size([3, 784, 512])
         # prepare VL transformer inputs
         kwargs['img_feats'] = vid_feats
 
@@ -178,6 +172,6 @@ class VideoTransformer(torch.nn.Module):
                           pretrained_num_tokens * i:pretrained_num_tokens *
                           (i + 1)] = pretrained_learn_att
 
-    def freeze_backbone(self, freeze=True):
-        for _, p in self.swin.named_parameters():
-            p.requires_grad = not freeze
+    #def freeze_backbone(self, freeze=True):
+     #   for _, p in self.swin.named_parameters():
+    #        p.requires_grad = not freeze

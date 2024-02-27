@@ -27,7 +27,6 @@ from src.configs.config import (
 from src.datasets.vl_dataloader import make_data_loader
 from src.evalcap.utils_caption_evaluate import evaluate_on_coco_caption
 from src.modeling.load_bert import get_bert_model
-from src.modeling.load_passt import MyPasst
 from src.modeling.load_swin import get_swin_model, reload_pretrained_swin
 from src.modeling.video_captioning_e2e_vid_swin_bert import VideoTransformer
 from src.solver import AdamW, WarmupLinearLR
@@ -179,7 +178,8 @@ def train(args, train_dataloader, val_dataloader, model, tokenizer,
     training_saver.save_args(args)
     training_saver.save_tokenizer(tokenizer)
 
-    for iteration, (img_keys, batch, meta_data) in enumerate(train_dataloader):
+    #for iteration, (img_keys, batch, meta_data) in enumerate(train_dataloader):
+    for iteration in enumerate(train_dataloader):
         iteration += 1
         data_time = time.time() - end
         batch = tuple(t.to(args.device) for t in batch)
@@ -190,20 +190,16 @@ def train(args, train_dataloader, val_dataloader, model, tokenizer,
             'attention_mask': batch[1],
             'token_type_ids': batch[2],
             'img_feats': batch[3],
-            'audio_feat': batch[4],
-            'masked_pos': batch[5],
-            'masked_ids': batch[6],
-            'input_token_ids': batch[7],
-            'output_token_ids': batch[8],
+            'masked_pos': batch[4],
+            'masked_ids': batch[5],
+            'input_token_ids': batch[6],
+            'output_token_ids': batch[7],
         }
 
         if iteration == 1:
             for k, v in inputs.items():
                 logger.info(f'{k} = {v.shape}')
 
-        if args.deepspeed_fp16:
-            # deepspeed does not autocast inputs
-            inputs = fp32_to_fp16(inputs)
 
         if args.mixed_precision_method == "fairscale":
             with torch.cuda.amp.autocast(enabled=True):
@@ -470,7 +466,6 @@ def test(args, test_dataloader, model, tokenizer, predict_file):
                     'attention_mask': batch[1],
                     'token_type_ids': batch[2],
                     'img_feats': batch[3],
-                    'audio_feat': batch[4],
                     'masked_pos': batch[5],
                     'input_token_ids': batch[6],
                     'output_token_ids': batch[7],
@@ -622,11 +617,6 @@ def get_custom_args(base_config):
                         nargs='?',
                         const=True,
                         default=False)
-    parser.add_argument('--freeze_passt',
-                        type=str_to_bool,
-                        nargs='?',
-                        const=True,
-                        default=False)
     parser.add_argument('--use_checkpoint',
                         type=str_to_bool,
                         nargs='?',
@@ -710,18 +700,13 @@ def main(args):
     logger.info(f"Cuda version is: {torch.version.cuda}")
     logger.info(f"cuDNN version is : {torch.backends.cudnn.version()}")
 
-    # Get Passt
-    passt_model = MyPasst()
-    if args.freeze_passt:
-        passt_model.freeze()
     # Get Video Swin model
-    swin_model = get_swin_model(args)
+    #swin_model = get_swin_model(args)
     # Get BERT and tokenizer
     bert_model, config, tokenizer = get_bert_model(args)
     # build SwinBERT based on training configs
-    vl_transformer = VideoTransformer(args, config, swin_model, bert_model,
-                                      passt_model)
-    vl_transformer.freeze_backbone(freeze=args.freeze_backbone)
+    vl_transformer = VideoTransformer(args, config, bert_model,)
+    #vl_transformer.freeze_backbone(freeze=args.freeze_backbone)
 
     if args.do_eval:
         # load weights for eval/inference

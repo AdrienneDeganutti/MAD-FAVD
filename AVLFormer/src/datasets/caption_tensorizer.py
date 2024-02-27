@@ -360,7 +360,6 @@ class CaptionTensorizer(object):
     def tensorize_example_e2e(self,
                               text_a,
                               img_feat,
-                              audio_feat,
                               text_b=None,
                               cls_token_segment_id=0,
                               pad_token_segment_id=0,
@@ -405,9 +404,9 @@ class CaptionTensorizer(object):
         if self.is_train:
             mlm_targets = torch.tensor(mlm_targets, dtype=torch.long)
             return (input_ids, attention_mask, segment_ids, img_feat,
-                    audio_feat, masked_pos, mlm_targets, input_token_ids,
+                    masked_pos, mlm_targets, input_token_ids,
                     output_token_ids)
-        return input_ids, attention_mask, segment_ids, img_feat, audio_feat, masked_pos, input_token_ids, output_token_ids
+        return input_ids, attention_mask, segment_ids, img_feat, masked_pos, input_token_ids, output_token_ids
 
 
 def build_tensorizer(args, tokenizer, is_train=True):
