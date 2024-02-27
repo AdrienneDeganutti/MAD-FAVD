@@ -15,6 +15,7 @@ datasets/videos/*
 datasets/audios
 datasets/audios/*
 datasets/frames
+datasets/8_frames_tsv
 datasets/frames/*
 datasets/frame_tsv
 datasets/frame_tsv/*
