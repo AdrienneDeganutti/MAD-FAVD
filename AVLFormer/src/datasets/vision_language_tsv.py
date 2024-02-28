@@ -1,8 +1,3 @@
-"""
-Copyright (c) Microsoft Corporation.
-Licensed under the MIT license.
-
-"""
 import io
 import json
 import os.path as op
@@ -21,18 +16,10 @@ from src.utils.logger import LOGGER
 from src.utils.tsv_file import CompositeTSVFile, TSVFile
 from src.utils.tsv_file_ops import tsv_reader
 import torch
-
+from torchvision import transforms
 from .data_utils.image_ops import img_from_base64
 from .data_utils.video_ops import extract_frames_from_video_path
 
-# video_transforms & volume_transforms from https://github.com/hassony2/torch_videovision
-from .data_utils.video_transforms import (
-    CenterCrop,
-    Compose,
-    Normalize,
-    RandomCrop,
-    Resize,
-)
 from .data_utils.volume_transforms import ClipToTensor
 
 
@@ -49,6 +36,7 @@ class VisionLanguageTSVDataset(object):
         self.args = args
         self.tokenizer = tokenizer
         self.tensorizer = tensorizer
+        self.transform = transforms.Compose([transforms.ToTensor()])
 
         self.yaml_file = yaml_file
         self.root = Path(op.dirname(yaml_file)).parent.absolute()
@@ -57,13 +45,6 @@ class VisionLanguageTSVDataset(object):
         self.is_composite = self.cfg.get('composite', False)
         self.cap_linelist_file = find_file_path_in_yaml(
             self.cfg.get('caption_linelist', None), op.join(self.root, 'metadata'))
-
-        # self.cfg =
-        # {'caption': 'train.caption.tsv',
-        #  'caption_coco_format': 'train.caption_coco_format.json',
-        #  'caption_linelist': 'train.caption.linelist.tsv',
-        #  'img': 'frame_tsv/train_32frames.img.tsv',
-        #  'label': 'train.label.tsv'
 
         self.att_mode = args.att_mode
 
@@ -132,27 +113,22 @@ class VisionLanguageTSVDataset(object):
                     f'Num of Frame: {self.decoder_num_frames}, '
                     f'FPS: {self.decoder_target_fps}, '
                     f'Sampling: {self.decoder_sampling_strategy}')
-        # Initialize video transforms
-        # adapt from https://github.com/hassony2/torch_videovision
 
-        #if is_train == True:
-        #    self.raw_video_crop_list = [
-        #        Resize(self.img_res),
-        #        RandomCrop((self.img_res, self.img_res)),
-        #        ClipToTensor(channel_nb=3),
-        #        Normalize(mean=[0.485, 0.456, 0.406],
-        #                  std=[0.229, 0.224, 0.225])
-        #    ]
-        #else:
-        #    self.raw_video_crop_list = [
-        #        Resize(self.img_res),
-        #        CenterCrop((self.img_res, self.img_res)),
-        #        ClipToTensor(channel_nb=3),
-         #       Normalize(mean=[0.485, 0.456, 0.406],
-        #                  std=[0.229, 0.224, 0.225])
-        #    ]
-        #self.raw_video_prcoess = Compose(self.raw_video_crop_list)
 
+    def convert_string_to_float_array(self, s):
+        # Remove brackets and extra characters
+        s = str(s)
+        
+        s = s.replace('[', '').replace(']', '').replace(',', ' ')
+        s = s.replace("'", "").replace('"', '')
+
+        # Split the string into individual number strings
+        number_strings = s.split()
+
+        # Convert each number string to a float
+        float_numbers = [float(num) for num in number_strings]
+
+        return np.array(float_numbers, dtype=np.float32)
 
 
     def roll_func(self, x, axis=1, shift=None, shift_range=50):
@@ -344,7 +320,7 @@ class VisionLanguageTSVDataset(object):
                 image = binary_frms[i]
             except Exception as e:
                 print(f"Corrupt frame at {i}")
-                image = np.zeros((1, _C, _H, _W), dtype=np.int64)
+                #image = np.zeros((1, _C, _H, _W), dtype=np.int64)
             #_, _C, _H, _W = image.shape
             frames.append(image)
         return np.vstack(frames)
@@ -373,7 +349,7 @@ class VisionLanguageTSVDataset(object):
             return self.decode_and_get_frames(row[-1], start, end), True
         # if the input is a video tsv with frames pre-extracted,
         # return a video-frame tensor
-        elif len(row) >= self.decoder_num_frames:
+        elif len(row) >= self.decoder_num_frames +1:
             return self.get_frames_from_tsv(row[1:]), True
         # if the input is a image tsv, return image numpy array
         else: 
@@ -397,11 +373,12 @@ class VisionLanguageTSVDataset(object):
         # tag = ' ' start = None end = None is_video = True
         # get image or video frames
         # frames: (T, C, H, W),  is_video: binary tag
-        #raw_frames, is_video = self.get_visual_data(img_idx, start, end)
+        raw_frames, is_video = self.get_visual_data(img_idx, start, end)
 
         # apply augmentation. frozen-in-time if the input is an image
         # preproc_frames: (T, C, H, W), C = 3, H = W = self.img_res, channel is RGB
         #preproc_frames = self.apply_augmentations(raw_frames)
+        preproc_frames = np.array([self.convert_string_to_float_array(frame) for frame in raw_frames])
 
         # tokenize caption and generate attention maps
         # it will consider only # of visual tokens for building attention maps. # is args.max_img_seq_length
@@ -416,19 +393,19 @@ class VisionLanguageTSVDataset(object):
                 caption_sample = dict()
 
         # add_od_labels = False
-        #if self.args.add_od_labels == True:
-        #    example = self.tensorizer.tensorize_example_e2e(
-        #        caption,
-         #       preproc_frames,
-        #        text_b=tag,
-        #        text_meta=caption_sample,
-        #        mode=self.att_mode)
-        #else:
-        #    example = self.tensorizer.tensorize_example_e2e(
-        #        caption,
-         #       preproc_frames,
-         #       text_meta=caption_sample,
-         #       mode=self.att_mode)
+        if self.args.add_od_labels == True:
+            example = self.tensorizer.tensorize_example_e2e(
+                caption,
+                preproc_frames,
+                text_b=tag,
+                text_meta=caption_sample,
+                mode=self.att_mode)
+        else:
+            example = self.tensorizer.tensorize_example_e2e(
+                caption,
+                preproc_frames,
+                text_meta=caption_sample,
+                mode=self.att_mode)
 
         # preparing outputs
         meta_data = {}
