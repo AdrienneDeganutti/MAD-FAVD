@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import numpy as np
 import sys
 
 pythonpath = os.path.abspath(
@@ -47,7 +46,6 @@ from src.utils.miscellaneous import (
 )
 from src.utils.tsv_file_ops import reorder_tsv_keys, tsv_writer
 import torch
-import torch.nn.functional as F
 import torch.distributed as dist
 from tqdm import tqdm
 
@@ -181,7 +179,6 @@ def train(args, train_dataloader, val_dataloader, model, tokenizer,
     training_saver.save_tokenizer(tokenizer)
 
     for iteration, (img_keys, batch, meta_data) in enumerate(train_dataloader):
-    #for iteration in enumerate(train_dataloader):
         iteration += 1
         data_time = time.time() - end
         batch = tuple(t.to(args.device) for t in batch)
