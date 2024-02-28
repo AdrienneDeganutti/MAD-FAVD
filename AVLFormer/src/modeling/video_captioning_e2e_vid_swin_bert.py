@@ -32,15 +32,9 @@ class VideoTransformer(torch.nn.Module):
     def __init__(self, args, config, transformer_encoder):
         super(VideoTransformer, self).__init__()
         self.config = config
-        #self.use_checkpoint = args.use_checkpoint and not args.freeze_backbone
-        #if self.use_checkpoint:
-        #    self.swin = checkpoint_wrapper(swin, offload_to_cpu=True)
-        #else:
-        #    self.swin = swin
         self.trans_encoder = transformer_encoder
         self.img_feature_dim = int(args.img_feature_dim)
         self.use_grid_feat = args.grid_feat
-        #self.latent_feat_size = self.swin.backbone.norm.normalized_shape[0]
         self.latent_feat_size = 1024
         self.fc = torch.nn.Linear(self.latent_feat_size, self.img_feature_dim)
         self.compute_mask_on_the_fly = False  # deprecated
@@ -61,26 +55,9 @@ class VideoTransformer(torch.nn.Module):
             self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, *args, **kwargs):
-        # input_ids = torch.Size([3, 300])
-        # attention_mask = torch.Size([3, 1084, 1084])
-        # token_type_ids = torch.Size([3, 300])
-        # img_feats = torch.Size([3, 32, 3, 224, 224])
-        # masked_pos = torch.Size([3, 300])
-        # masked_ids = torch.Size([3, 45])
-
-
-        images = kwargs['img_feats']
-        B, S, C, H, W = images.shape  # batch, segment, chanel, hight, width
-        # (B x S x C x H x W) --> (B x C x S x H x W)
-        images = images.permute(0, 2, 1, 3, 4)
-        vid_feats = self.swin(images)
-        if self.use_grid_feat == True:
-            vid_feats = vid_feats.permute(0, 2, 3, 4, 1)
-        vid_feats = vid_feats.view(B, -1, self.latent_feat_size)
-        vid_feats = self.fc(vid_feats)
 
         # prepare VL transformer inputs
-        kwargs['img_feats'] = vid_feats
+        #kwargs['img_feats'] = vid_feats
 
         # self.trans_encoder.bert.encoder.output_attention = False
         # if self.trans_encoder.bert.encoder.output_attentions:
@@ -171,7 +148,3 @@ class VideoTransformer(torch.nn.Module):
                           (i + 1),
                           pretrained_num_tokens * i:pretrained_num_tokens *
                           (i + 1)] = pretrained_learn_att
-
-    #def freeze_backbone(self, freeze=True):
-     #   for _, p in self.swin.named_parameters():
-    #        p.requires_grad = not freeze
