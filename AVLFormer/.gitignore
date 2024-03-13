@@ -23,6 +23,7 @@ datasets/audio_mp3
 datasets/audio_mp3/*
 datasets/audio_hdf
 datasets/audio_hdf/*
+datasets/*
 
 # ignore pt models
 models/video_swin_transformer/*.pth
