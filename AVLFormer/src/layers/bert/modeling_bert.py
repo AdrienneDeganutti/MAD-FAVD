@@ -433,7 +433,6 @@ class BertSelfAttention(nn.Module):
         attention_scores = attention_scores / math.sqrt(
             self.attention_head_size)
         # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
-        #if self.do_train 
         match_shape = attention_scores.shape[2]
         attention_mask = F.interpolate(attention_mask, size=[match_shape, match_shape])
         attention_scores = attention_scores + attention_mask
