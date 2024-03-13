@@ -17,10 +17,12 @@ All worked is based off the below papers and associated repositories:
 }
 ```
 ```
-@InProceedings{han2023autoad,
-    title={{AutoAD}: Movie Description in Context},  
-    author={Tengda Han and Max Bain and Arsha Nagrani and G\"ul Varol and Weidi Xie and Andrew Zisserman},  
-    booktitle={CVPR},  
-    year={2023}
+@InProceedings{Soldan_2022_CVPR,
+    author    = {Soldan, Mattia and Pardo, Alejandro and Alc\'azar, Juan Le\'on and Caba, Fabian and Zhao, Chen and Giancola, Silvio and Ghanem, Bernard},
+    title     = {MAD: A Scalable Dataset for Language Grounding in Videos From Movie Audio Descriptions},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month     = {June},
+    year      = {2022},
+    pages     = {5026-5035}
 }
 ```
