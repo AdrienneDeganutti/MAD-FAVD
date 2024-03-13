@@ -20,7 +20,7 @@ def generate_lineidx_files(input_file, output_prefix):
             f.write(offset.to_bytes(8, 'little'))
 
 if __name__ == '__main__':
-    input_file = 'datasets/encoded_8_frames_tsv/train_segmented_features.tsv'      # SET INPUT HERE
-    output_prefix = 'datasets/encoded_8_frames_tsv/train_segmented_features'       # SET OUTPUT HERE
+    input_file = 'datasets/metadata/train.caption.tsv'      # SET INPUT HERE
+    output_prefix = 'datasets/metadata/train.caption'       # SET OUTPUT HERE
     generate_lineidx_files(input_file, output_prefix)
     print(f"Generated {output_prefix}.lineidx and {output_prefix}.lineidx.8b files.")
