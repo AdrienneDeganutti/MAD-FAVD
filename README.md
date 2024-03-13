@@ -1,5 +1,4 @@
 # MAD-FAVD: MAD-Adjusted Fine-grained Audible Video Description
-
 This repository provides an adjusted implementation of the CVPR2023 paper: "Fine-grained Audible Video Description" for the MAD dataset: "MAD: A Scalable Dataset for Language Grounding in Videos from Movie Audio Descriptions."
 
 ## Citation
