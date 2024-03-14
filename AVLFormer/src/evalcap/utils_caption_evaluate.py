@@ -100,7 +100,6 @@ def evaluate_on_coco_caption(res_file, label_file, outfile=None):
     cocoEval.params['image_id'] = cocoRes.getImgIds()
 
     # evaluate results
-    # SPICE will take a few minutes the first time, but speeds up due to caching
     cocoEval.evaluate()
     result = cocoEval.eval
     if not outfile:
@@ -289,7 +288,7 @@ class ScstRewardCriterion(torch.nn.Module):
 class NocapsEvaluator(object):
     r"""
     A utility class to submit model predictions on nocaps splits to EvalAI, and retrieve model
-    performance based on captioning metrics (such as CIDEr, SPICE).
+    performance based on captioning metrics (such as CIDEr).
 
     Extended Summary
     ----------------
@@ -346,8 +345,7 @@ class NocapsEvaluator(object):
                     "B4": {"in-domain", "near-domain", "out-domain", "entire"},  # BLEU-4
                     "METEOR": {"in-domain", "near-domain", "out-domain", "entire"},
                     "ROUGE-L": {"in-domain", "near-domain", "out-domain", "entire"},
-                    "CIDEr": {"in-domain", "near-domain", "out-domain", "entire"},
-                    "SPICE": {"in-domain", "near-domain", "out-domain", "entire"},
+                    "CIDEr": {"in-domain", "near-domain", "out-domain", "entire"}
                 }
 
         """
@@ -410,7 +408,7 @@ class NocapsEvaluator(object):
         metrics = json.loads(result_stdout, encoding="utf-8")
 
         # keys: {"in-domain", "near-domain", "out-domain", "entire"}
-        # In each of these, keys: {"B1", "B2", "B3", "B4", "METEOR", "ROUGE-L", "CIDEr", "SPICE"}
+        # In each of these, keys: {"B1", "B2", "B3", "B4", "METEOR", "ROUGE-L", "CIDEr"}
         metrics = {
             "in-domain": metrics[0]["in-domain"],
             "near-domain": metrics[1]["near-domain"],
@@ -419,7 +417,7 @@ class NocapsEvaluator(object):
         }
 
         # Restructure the metrics dict for better tensorboard logging.
-        # keys: {"B1", "B2", "B3", "B4", "METEOR", "ROUGE-L", "CIDEr", "SPICE"}
+        # keys: {"B1", "B2", "B3", "B4", "METEOR", "ROUGE-L", "CIDEr"}
         # In each of these, keys: keys: {"in-domain", "near-domain", "out-domain", "entire"}
         flipped_metrics: Dict[str, Dict[str, float]] = defaultdict(dict)
         for key, val in metrics.items():
