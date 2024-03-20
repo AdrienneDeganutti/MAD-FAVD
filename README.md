@@ -3,7 +3,7 @@ This repository provides an adjusted implementation of the CVPR2023 paper: "Fine
 
 ## Citation
 
-All worked is based off the below papers and associated repositories:
+All work is based off the below papers and associated repositories:
 
 ```
 @InProceedings{Shen_2023_CVPR,
