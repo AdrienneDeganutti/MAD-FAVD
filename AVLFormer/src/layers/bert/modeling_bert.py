@@ -433,6 +433,8 @@ class BertSelfAttention(nn.Module):
         attention_scores = attention_scores / math.sqrt(
             self.attention_head_size)
         # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+        
+        #dodgy workaround:
         match_shape = attention_scores.shape[2]
         attention_mask = F.interpolate(attention_mask, size=[match_shape, match_shape])
         attention_scores = attention_scores + attention_mask
@@ -2065,9 +2067,11 @@ class BertForImageCaptioning(BertPreTrainedModel):
 
             curr_len = input_ids.shape[1]
             full_len = self.max_seq_len + self.od_labels_len + self.img_seq_len
-            tensor = self.full_attention_mask.unsqueeze(1)
-            newshape = F.interpolate(tensor, size=(123, 123))
-            self.full_attention_mask = newshape.squeeze(1)
+            #tensor = self.full_attention_mask.unsqueeze(1)
+            #newshape = F.interpolate(tensor, size=(123, 123))
+            #self.full_attention_mask = newshape.squeeze(1)
+            self.full_attention_mask = F.interpolate(self.full_attention_mask.unsqueeze(0),
+                                                    size=[full_len, full_len], mode='bilinear', align_corners=False).squeeze(0)
             assert self.full_attention_mask.shape == (batch_size, full_len,
                                                       full_len)
 
