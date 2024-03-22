@@ -17,32 +17,58 @@ section = original_data['annotations']
 
 # Initialize the counter for the 'id' field
 id_counter = 0
+section_counter = 0
 
 for annotation in section:
     # Extract the annotation ID and the associated caption
-    annotation_id = section[id_counter]['image_id']
-    caption = section[id_counter]['caption']
+    annotation_id = section[section_counter]['image_id']
+    caption = section[section_counter]['caption']
 
-    # Append the data in the specified format
-    annotations_list.append({
-        "image_id": annotation_id,
-        "caption": caption,
-        "id": id_counter
-    })
+    try:
+        numeric_id = int(annotation_id)
+    except ValueError:
+        print("Invalid ID: not a number!")
+        
+    if numeric_id in range(353729, 353816):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(132522, 132530):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(163935, 163940):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(249770, 249772):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(304135, 304159):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(307977, 307979):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(333149, 333160):
+        print(f'Skipping:', numeric_id)
+    elif numeric_id in range(358371, 358377):
+        print(f'Skipping:', numeric_id)
+    
+    else:
+        # Append the data in the specified format
+        annotations_list.append({
+            "image_id": annotation_id,
+            "caption": caption,
+            "id": id_counter
+        })
 
-    images_list.append({
-        "id": annotation_id,
-        "file_name": annotation_id
-    })
+        images_list.append({
+            "id": annotation_id,
+            "file_name": annotation_id
+        })
 
-    # Increment the counter for the next entry
-    id_counter += 1
+        # Increment the counter for the next entry
+        id_counter += 1
 
-    print(f'Finished annotation:', annotation_id)
+        print(f'Finished annotation:', annotation_id)
+    
+    section_counter += 1
 
 # Create the final JSON structure
 final_json = {"annotations": annotations_list, "images": images_list}
 
 # Save the JSON file
-with open(json_file, 'w') as f:
+with open(output_folder, 'w') as f:
     json.dump(final_json, f, indent=4)
