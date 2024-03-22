@@ -115,22 +115,6 @@ class VisionLanguageTSVDataset(object):
                     f'Sampling: {self.decoder_sampling_strategy}')
 
 
-    def convert_string_to_float_array(self, s):
-        # Remove brackets and extra characters
-        s = str(s)
-        
-        s = s.replace('[', '').replace(']', '').replace(',', ' ')
-        s = s.replace("'", "").replace('"', '')
-
-        # Split the string into individual number strings
-        number_strings = s.split()
-
-        # Convert each number string to a float
-        float_numbers = [float(num) for num in number_strings]
-
-        return np.array(float_numbers, dtype=np.float32)
-
-
     def roll_func(self, x, axis=1, shift=None, shift_range=50):
         x = torch.as_tensor(x)
         sf = shift
@@ -287,18 +271,34 @@ class VisionLanguageTSVDataset(object):
         crop_frames = crop_frames.permute(1, 0, 2, 3)
         return crop_frames
 
+    def convert_string_to_float_array(self, s):
+        # Remove brackets and extra characters
+        s = str(s)
+        
+        s = s.replace('[', '').replace(']', '').replace(',', ' ')
+        s = s.replace("'", "").replace('"', '')
+
+        # Split the string into individual number strings
+        number_strings = s.split()
+
+        # Convert each number string to a float
+        float_numbers = [float(num) for num in number_strings]
+
+        return np.array(float_numbers, dtype=np.float32)
+
     def get_image(self, bytestring):
         # output numpy array (T, C, H, W), channel is RGB, T = 1
-        cv2_im = img_from_base64(bytestring)
-        cv2_im = cv2_im[:, :, ::-1]  # COLOR_BGR2RGB
+        #cv2_im = img_from_base64(bytestring)
+        cv2_im = self.convert_string_to_float_array(bytestring)
+        #cv2_im = cv2_im[:, :, ::-1]  # COLOR_BGR2RGB
         # cv2_im = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
-        output = np.transpose(cv2_im[np.newaxis, ...], (0, 3, 1, 2))
-        return output
+        #output = np.transpose(cv2_im[np.newaxis, ...], (0, 3, 1, 2))
+        return cv2_im
 
     def get_frames_from_tsv(self, binary_frms):
         # get pre-extracted video frames from tsv files
         frames = []
-        #_C, _H, _W = 3, 224, 224
+        #_C, _H, _W = 3, 224, 224                               #CHANGE
         if self.decoder_num_frames > len(binary_frms):
             print(
                 f"Corrupt videos, requested {self.decoder_num_frames} frames, "
@@ -317,11 +317,11 @@ class VisionLanguageTSVDataset(object):
 
         for i in sampling(0, len(binary_frms) - 1, self.decoder_num_frames):
             try:
-                image = binary_frms[i]
+                image = self.get_image(binary_frms[i])                                                      #CHANGE
             except Exception as e:
                 print(f"Corrupt frame at {i}")
                 #image = np.zeros((1, _C, _H, _W), dtype=np.int64)
-            #_, _C, _H, _W = image.shape
+            #_, _C, _H, _W = image.shape                                                 #CHANGE
             frames.append(image)
         return np.vstack(frames)
 
@@ -349,8 +349,8 @@ class VisionLanguageTSVDataset(object):
             return self.decode_and_get_frames(row[-1], start, end), True
         # if the input is a video tsv with frames pre-extracted,
         # return a video-frame tensor
-        elif len(row) >= self.decoder_num_frames +1:
-            return self.get_frames_from_tsv(row[1:]), True
+        elif len(row) >= self.decoder_num_frames +1:            
+            return self.get_frames_from_tsv(row[1:]), True      
         # if the input is a image tsv, return image numpy array
         else: 
             return self.get_image(row[-1]), False
@@ -378,7 +378,7 @@ class VisionLanguageTSVDataset(object):
         # apply augmentation. frozen-in-time if the input is an image
         # preproc_frames: (T, C, H, W), C = 3, H = W = self.img_res, channel is RGB
         #preproc_frames = self.apply_augmentations(raw_frames)
-        preproc_frames = np.array([self.convert_string_to_float_array(frame) for frame in raw_frames])
+        preproc_frames = raw_frames
 
         # tokenize caption and generate attention maps
         # it will consider only # of visual tokens for building attention maps. # is args.max_img_seq_length
