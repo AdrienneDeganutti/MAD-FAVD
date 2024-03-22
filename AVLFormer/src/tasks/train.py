@@ -14,7 +14,7 @@ import os
 import os.path as op
 import time
 
-#import wandb
+import wandb
 
 from apex import amp
 from apex.parallel import DistributedDataParallel as DDP
@@ -151,6 +151,10 @@ def mixed_precision_init(args, model):
 
 def train(args, train_dataloader, val_dataloader, model, tokenizer,
           training_saver, optimizer, scheduler):
+    
+    # Initialize wandb
+    if args.rank == 0:
+        wandb.init(project="MAD-FAVD", name="Exp3")
 
     meters = MetricLogger(delimiter='  ')
     max_iter = args.max_iter
@@ -276,6 +280,13 @@ def train(args, train_dataloader, val_dataloader, model, tokenizer,
                 optimizer.zero_grad()
             restorer.step()
 
+            #Add weights and biases logging
+            if args.rank == 0:
+                wandb.log({
+                    "Training Loss": running_loss.val,
+                    "Accuracy": running_batch_acc.val,
+                }, step=global_step)
+
             TB_LOGGER.add_scalar("train/loss", running_loss.val, global_step)
             TB_LOGGER.add_scalar("train/acc", running_batch_acc.val, global_step)
             log_start = time.time()
@@ -372,6 +383,9 @@ def train(args, train_dataloader, val_dataloader, model, tokenizer,
     logger.info(
         f'Total training time: {total_time_str} ({(total_training_time / max_iter):.4f} s / iter)'
     )
+
+    # Finish the Weights & Biases run
+    wandb.finish()
 
     return checkpoint_dir
 
@@ -534,11 +548,12 @@ def test(args, test_dataloader, model, tokenizer, predict_file):
 
 def check_arguments(args):
     # shared basic checks
+    
     basic_check_arguments(args)
     # additional sanity check:
-    args.max_img_seq_length = int(
-        (args.max_num_frames / 2) * (int(args.img_res) / 32) *
-        (int(args.img_res) / 32)) + 473
+    #args.max_img_seq_length = int(
+     #   (args.max_num_frames / 2) * (int(args.img_res) / 32) *
+    #    (int(args.img_res) / 32)) + 473
 
     if args.freeze_backbone or args.backbone_coef_lr == 0:
         args.backbone_coef_lr = 0
